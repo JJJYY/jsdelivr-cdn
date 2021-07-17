@@ -52,54 +52,105 @@
     }
 
     // 插入图片
-    function insertAllPage (pics) {
+    function getAllPicElements (pics) {
         const picContainer = document.querySelector('#hgallery')
         const picElements = Array.from(document.querySelectorAll('#hgallery > img'))
 
+        picElements.forEach(item => {
+            picContainer.removeChild(item)
+        })
         pics.forEach(item => {
             const newNode = picElements[0].cloneNode()
 
             newNode.src = item
-            picContainer.appendChild(newNode)
             picElements.push(newNode)
         })
 
-        const ids = []
-        picElements.forEach((node, index) => {
-            const id = 'scroll-pic-' + index
-            ids.push(id)
-
-            node.id = id
-
-            node.addEventListener('error', () => {
-                node.parentNode.removeChild(node)
-            })
-        })
-
-        return ids
+        return picElements
     }
 
-    function autoScrollPic(ids) {
-        const len = ids.length
+    function createElement(tag, className) {
+        const ele = document.createElement(tag);
+        ele.className = className;
 
-        let i = 0
-        setInterval(() => {
-            const next = document.querySelector('#' + ids[i % len])
-            if (next) {
-                document.querySelector('#' + ids[i % len]).scrollIntoView()
+        return ele
+    }
+
+    function transform2Swiper(items = []) {
+        const style = createElement('style');
+        style.innerText = `
+            .swiper-container {
+                position: fixed;
+                top: 0;
+                left: 0;
+                z-index: 2147483648;
+                width: 100vw;
+                height: 100vh;
+                background: #fff;
             }
-            i++
-        }, 3000)
+            .swiper-slide {
+                object-fit: contain;
+            }
+        `
+        document.head.appendChild(style)
+        const container = createElement('div', 'swiper-container');
+        const wrapper = createElement('div', 'swiper-wrapper');
+
+        container.appendChild(wrapper)
+        items.forEach(item => {
+            const slide = createElement('img', 'swiper-slide');
+            slide.src = item.src;
+            wrapper.appendChild(slide)
+        })
+        document.body.appendChild(container)
+        setTimeout(() => {
+            new window.Swiper('.swiper-container', {
+                autoplay: {
+                    delay: 3000
+                },
+                slidesPerView: 'auto',
+                centeredSlides: true,
+                spaceBetween: 30,
+                pagination: {
+                el: '.swiper-pagination',
+                clickable: true,
+                },
+            });
+        }, 2000)
+
+        const timer = setInterval(() => {
+            if (container.nextElementSibling) {
+                document.body.removeChild(container.nextElementSibling)
+                clearInterval(timer)
+            }
+        }, 500)
     }
 
-    // 启动
-    (function main () {
+    function insertSource(src) {
+        let source = null
+        if (src.indexOf('.js') > -1) {
+            source = document.createElement('script');
+            source.src = src;
+        } else if (src.indexOf('.css') > -1) {
+            source = document.createElement('link');
+            source.rel = 'stylesheet'
+            source.href = src;
+        }
+
+        source && document.head.appendChild(source);
+
+        return Promise.resolve();
+    }
+    Promise.all([
+        insertSource('//unpkg.com/swiper/swiper-bundle.min.css'),
+        insertSource('//unpkg.com/swiper/swiper-bundle.min.js')
+    ]).then(() => {
         const page = readPage()
         const limit = readLimit()
 
         const pics = readAllPic(page, limit)
-        const ids = insertAllPage(pics)
+        const elements = getAllPicElements(pics)
 
-        autoScrollPic(ids)
-    })()
+        transform2Swiper(elements)
+    })
 })();
